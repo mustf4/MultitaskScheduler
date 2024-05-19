@@ -129,6 +129,12 @@ namespace MultitaskScheduler
         /// </summary>
         public void Reset()
         {
+            foreach (var kvp in _dictionary)
+                kvp.Value.Clear();
+
+            foreach (var kvp in _dictionaryWithParam)
+                kvp.Value.Clear();
+
             _dictionary.Clear();
             _dictionaryWithParam.Clear();
         }
@@ -272,7 +278,7 @@ namespace MultitaskScheduler
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"DictionaryCount: {_dictionary.Count}; DictionaryWithParamCount: {_dictionaryWithParam.Count}. {ex}");
+                        Console.WriteLine($"Dictionary Count: '{_dictionary.Count}'; DictionaryWithParam Count: '{_dictionaryWithParam.Count}'. {ex}");
                     }
                 }
 
@@ -326,12 +332,9 @@ namespace MultitaskScheduler
             {
                 if (disposing)
                 {
-                    // TODO: dispose managed state (managed objects)
+                    Reset();
                 }
 
-                // Free unmanaged resources (unmanaged objects) and override finalizer
-                // Set large fields to null
-                Reset();
                 _disposedValue = true;
             }
         }
@@ -341,7 +344,7 @@ namespace MultitaskScheduler
         /// </summary>
         ~Scheduler()
         {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method           
             Dispose(disposing: false);
         }
 
