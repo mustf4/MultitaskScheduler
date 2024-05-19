@@ -6,34 +6,35 @@ using System.Threading.Tasks;
 
 namespace MultitaskScheduler
 {
-    public class GlobalScheduler
+    public class Scheduler
     {
-        private static GlobalScheduler _instance;
+        private static SchedulerFactory _schedulerFactory;
 
         private readonly static object _lock = new object();
-        private readonly static ConcurrentDictionary<int, List<Job>> _dictionary = new ConcurrentDictionary<int, List<Job>>();
-        private readonly static ConcurrentDictionary<int, List<JobWithParam>> _dictionaryWithParam = new ConcurrentDictionary<int, List<JobWithParam>>();
+        private readonly ConcurrentDictionary<int, List<Job>> _dictionary = new ConcurrentDictionary<int, List<Job>>();
+        private readonly ConcurrentDictionary<int, List<JobWithParam>> _dictionaryWithParam = new ConcurrentDictionary<int, List<JobWithParam>>();
 
-        public static GlobalScheduler Instance
+        public static SchedulerFactory Factory
         {
             get
             {
-                if (_instance == null)
+                if (_schedulerFactory == null)
                 {
                     lock (_lock)
                     {
-                        if (_instance == null)
-                            _instance = new GlobalScheduler();
+                        if (_schedulerFactory == null)
+                            _schedulerFactory = new SchedulerFactory();
                     }
                 }
 
-                return _instance;
+                return _schedulerFactory;
             }
         }
 
-        public bool IsCanceled { get; set; }
+        public string Name { get; }
+        public bool IsPaused { get; set; }
 
-        private GlobalScheduler()
+        internal Scheduler()
         {
             Task.Factory.StartNew(() => RunScheduler());
         }
@@ -93,7 +94,7 @@ namespace MultitaskScheduler
         {
             while (true)
             {
-                if (!IsCanceled)
+                if (!IsPaused)
                 {
                     if (!_dictionary.IsEmpty)
                     {
