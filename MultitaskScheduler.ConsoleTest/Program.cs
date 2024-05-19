@@ -9,7 +9,7 @@ namespace MultitaskScheduler.ConsoleTest
 
         static void Main(string[] args)
         {
-            _scheduler.ScheduleJob(4, () => Console.WriteLine(DateTime.Now.ToString("HH:mm:ss")));
+            _scheduler.ScheduleJob("Job 1", 4, () => Console.WriteLine(DateTime.Now.ToString("HH:mm:ss")));
             Thread.Sleep(9000);
             _scheduler.IsPaused = true;
             Thread.Sleep(9000);
