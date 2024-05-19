@@ -11,8 +11,8 @@ namespace MultitaskScheduler
         private static GlobalScheduler _instance;
 
         private readonly static object _lock = new object();
-        private readonly static ConcurrentDictionary<int, List<ScheduleModel>> _dictionary = new ConcurrentDictionary<int, List<ScheduleModel>>();
-        private readonly static ConcurrentDictionary<int, List<ScheduleModelWithArg>> _dictionaryWithParam = new ConcurrentDictionary<int, List<ScheduleModelWithArg>>();
+        private readonly static ConcurrentDictionary<int, List<Job>> _dictionary = new ConcurrentDictionary<int, List<Job>>();
+        private readonly static ConcurrentDictionary<int, List<JobWithParam>> _dictionaryWithParam = new ConcurrentDictionary<int, List<JobWithParam>>();
 
         public static GlobalScheduler Instance
         {
@@ -43,16 +43,17 @@ namespace MultitaskScheduler
         /// </summary>
         /// <param name="seconds">Range in seconds in which new scheduled job should trigger.</param>
         /// <param name="action">Job <see cref="Action"/> to trigger.</param>
+        /// <param name="handleOnce">Defines the whether that scheduled job should be triggered only once or infinitely.</param>
         public void ScheduleJob(int seconds, Action action, bool handleOnce = false)
         {
-            var model = new ScheduleModel
+            var model = new Job
             {
                 Action = action,
                 HandleOnce = handleOnce
             };
 
             if (!_dictionary.ContainsKey(seconds))
-                _dictionary.TryAdd(seconds, new List<ScheduleModel>());
+                _dictionary.TryAdd(seconds, new List<Job>());
 
             _dictionary[seconds].Add(model);
         }
@@ -62,18 +63,19 @@ namespace MultitaskScheduler
         /// </summary>
         /// <param name="seconds">Range in seconds in which new scheduled job should trigger.</param>
         /// <param name="action">Job <see cref="Action"/> to trigger with input parameter.</param>
-        /// <param name="arg">Input parameter for job action.</param>
-        public void ScheduleJob(int seconds, Action<object> action, object arg, bool handleOnce = false)
+        /// <param name="parameter">Input parameter for job action.</param>
+        /// <param name="handleOnce">Defines the whether that scheduled job should be triggered only once or infinitely.</param>
+        public void ScheduleJob(int seconds, Action<object> action, object parameter, bool handleOnce = false)
         {
-            var model = new ScheduleModelWithArg
+            var model = new JobWithParam
             {
                 Action = action,
-                Argument = arg,
+                Parameter = parameter,
                 HandleOnce = handleOnce
             };
 
             if (!_dictionaryWithParam.ContainsKey(seconds))
-                _dictionaryWithParam.TryAdd(seconds, new List<ScheduleModelWithArg>());
+                _dictionaryWithParam.TryAdd(seconds, new List<JobWithParam>());
 
             _dictionaryWithParam[seconds].Add(model);
         }
@@ -99,14 +101,24 @@ namespace MultitaskScheduler
                         {
                             for (int i = pair.Value.Count - 1; i >= 0; i--)
                             {
-                                ScheduleModel value = pair.Value[i];
+                                Job value = pair.Value[i];
                                 value.Counter++;
 
                                 if (value.Counter % pair.Key == 0)
                                 {
-                                    value.Action();
-                                    if (value.HandleOnce)
-                                        pair.Value.RemoveAt(i);
+                                    Task.Run(() =>
+                                    {
+                                        try
+                                        {
+                                            value.Action();
+                                            if (value.HandleOnce)
+                                                pair.Value.RemoveAt(i);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Console.WriteLine(ex.ToString());
+                                        }
+                                    });
                                 }
                             }
 
@@ -121,14 +133,24 @@ namespace MultitaskScheduler
                         {
                             for (int i = pair.Value.Count - 1; i >= 0; i--)
                             {
-                                ScheduleModelWithArg value = pair.Value[i];
+                                JobWithParam value = pair.Value[i];
                                 value.Counter++;
 
                                 if (value.Counter % pair.Key == 0)
                                 {
-                                    value.Action(value.Argument);
-                                    if (value.HandleOnce)
-                                        pair.Value.RemoveAt(i);
+                                    Task.Run(() =>
+                                    {
+                                        try
+                                        {
+                                            value.Action(value.Parameter);
+                                            if (value.HandleOnce)
+                                                pair.Value.RemoveAt(i);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Console.WriteLine(ex.ToString());
+                                        }
+                                    });
                                 }
                             }
 
@@ -142,17 +164,17 @@ namespace MultitaskScheduler
             }
         }
 
-        private class ScheduleModel
+        private class Job
         {
             public Action Action { get; set; }
             public bool HandleOnce { get; set; }
             public int Counter { get; set; }
         }
 
-        private class ScheduleModelWithArg
+        private class JobWithParam
         {
             public Action<object> Action { get; set; }
-            public object Argument { get; set; }
+            public object Parameter { get; set; }
             public bool HandleOnce { get; set; }
             public int Counter { get; set; }
         }
