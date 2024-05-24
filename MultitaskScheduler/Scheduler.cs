@@ -231,17 +231,34 @@ namespace MultitaskScheduler
                                 for (int i = pair.Value.Count - 1; i >= 0; i--)
                                 {
                                     Job value = pair.Value[i];
+                                    if (value.IsInProgress)
+                                        continue;
+
                                     value.Counter++;
 
                                     if (value.Counter % pair.Key == 0)
                                     {
-                                        Task.Run(() =>
+                                        value.IsInProgress = true;
+                                        Task.Factory.StartNew(v =>
                                         {
-                                            value.Action();
+                                            Job val = null;
+                                            try
+                                            {
+                                                val = (Job)v;
+                                                val.Action();
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                Console.WriteLine(ex);
+                                            }
+                                            finally
+                                            {
+                                                val.IsInProgress = false;
+                                            }
+                                        }, value);
 
-                                            if (value.HandleOnce)
-                                                pair.Value.RemoveAt(i);
-                                        });
+                                        if (value.HandleOnce)
+                                            pair.Value.RemoveAt(i);
                                     }
                                 }
 
@@ -257,17 +274,34 @@ namespace MultitaskScheduler
                                 for (int i = pair.Value.Count - 1; i >= 0; i--)
                                 {
                                     JobWithParam value = pair.Value[i];
+                                    if (value.IsInProgress)
+                                        continue;
+
                                     value.Counter++;
 
                                     if (value.Counter % pair.Key == 0)
                                     {
-                                        Task.Run(() =>
+                                        value.IsInProgress = true;
+                                        Task.Factory.StartNew(v =>
                                         {
-                                            value.Action(value.Parameter);
+                                            JobWithParam val = null;
+                                            try
+                                            {
+                                                val = (JobWithParam)v;
+                                                val.Action(val.Parameter);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                Console.WriteLine(ex);
+                                            }
+                                            finally
+                                            {
+                                                val.IsInProgress = false;
+                                            }
+                                        }, value);
 
-                                            if (value.HandleOnce)
-                                                pair.Value.RemoveAt(i);
-                                        });
+                                        if (value.HandleOnce)
+                                            pair.Value.RemoveAt(i);
                                     }
                                 }
 
@@ -309,21 +343,23 @@ namespace MultitaskScheduler
             }
         }
 
-        private class Job
+        private class Job : BaseJob
         {
-            public string Name { get; set; }
             public Action Action { get; set; }
-            public bool HandleOnce { get; set; }
-            public int Counter { get; set; }
         }
 
-        private class JobWithParam
+        private class JobWithParam : BaseJob
         {
-            public string Name { get; set; }
             public Action<object> Action { get; set; }
             public object Parameter { get; set; }
+        }
+
+        private class BaseJob
+        {
+            public string Name { get; set; }
             public bool HandleOnce { get; set; }
             public int Counter { get; set; }
+            public bool IsInProgress { get; set; }
         }
 
         protected virtual void Dispose(bool disposing)
